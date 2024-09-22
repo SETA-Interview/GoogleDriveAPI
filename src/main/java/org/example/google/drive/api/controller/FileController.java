@@ -38,9 +38,9 @@ public class FileController {
 
 	@GetMapping("")
 	@PreAuthorize("hasAnyAuthority('Viewer', 'Admin')")
-	public ResponseEntity<FileList> getFiles(@RequestParam @Valid @Max(100) @Min(0) int pageSize,
-											 @RequestParam(required = false) String nextPageToken,
-											 @RequestParam(required = false, defaultValue = "name asc") String sortBy) throws IOException {
+	public ResponseEntity<FileList> deleteFile(@RequestParam @Valid @Max(100) @Min(0) int pageSize,
+											   @RequestParam(required = false) String nextPageToken,
+											   @RequestParam(required = false, defaultValue = "name asc") String sortBy) throws IOException {
 		return ResponseEntity.ok(fileService.getFiles(pageSize, nextPageToken, sortBy));
 	}
 
@@ -67,7 +67,7 @@ public class FileController {
 
 	@DeleteMapping("/{fileId}")
 	@PreAuthorize("hasAuthority('Admin')")
-	public ResponseEntity<Void> getFiles(@PathVariable String fileId) throws IOException {
+	public ResponseEntity<Void> deleteFile(@PathVariable String fileId) throws IOException {
 		fileService.deleteFile(fileId);
 		return ResponseEntity.ok().build();
 	}
