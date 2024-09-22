@@ -2,15 +2,13 @@ package org.example.google.drive.api.controller;
 
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import org.example.google.drive.api.service.FileService;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 @RestController
@@ -72,13 +72,23 @@ public class FileController {
 		return ResponseEntity.ok().build();
 	}
 
+	@SuppressWarnings("resource")
 	@GetMapping("/{fileId}/download")
 	@PreAuthorize("hasAnyAuthority('Admin', 'Viewer')")
-	public ResponseEntity<Resource> downloadFile(@PathVariable String fileId) throws IOException {
+	public StreamingResponseBody downloadFile(@PathVariable String fileId, HttpServletResponse response) throws IOException {
 		File file = fileService.getFile(fileId);
-		HttpHeaders headers = new HttpHeaders();
-		headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=\"" + file.getName() + "\"");
-		return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.getMimeType())).headers(headers)
-							 .body(new InputStreamResource(fileService.downloadFile(fileId)));
+		response.setContentType(file.getMimeType());
+		response.setHeader(
+				HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=\"" + file.getName() + "\"");
+
+		return outputStream -> {
+			int bytesRead;
+			final int bufferSize = 1024;
+			byte[] buffer = new byte[bufferSize];
+			InputStream inputStream = fileService.downloadFile(fileId);
+			while ((bytesRead = inputStream.read(buffer)) != -1) {
+				outputStream.write(buffer, 0, bytesRead);
+			}
+		};
 	}
 }
