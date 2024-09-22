@@ -5,8 +5,8 @@ import com.google.api.services.drive.model.FileList;
 import jakarta.annotation.Nullable;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 public interface FileService {
@@ -20,7 +20,7 @@ public interface FileService {
 	File updateFile(String fileId, @Nullable MultipartFile file, String name, @Nullable String mimeType, @Nullable List<String> parentIds)
 			throws IOException;
 
-	ByteArrayOutputStream downloadFile(String fileId) throws IOException;
+	InputStream downloadFile(String fileId) throws IOException;
 
 	File getFile(String fileId) throws IOException;
 }

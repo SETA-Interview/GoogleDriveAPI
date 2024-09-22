@@ -2,12 +2,15 @@ package org.example.google.drive.api.controller;
 
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import org.example.google.drive.api.service.FileService;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,21 +46,21 @@ public class FileController {
 
 	@PostMapping("")
 	@PreAuthorize("hasAuthority('Admin')")
-	public ResponseEntity<File> uploadFile(@RequestParam(value = "file", required = false) MultipartFile file,
-										   @RequestParam("name") @Valid @Size(max = 100) String name,
-										   @RequestParam(value = "mimeType", required = false) @Valid @Size(max = 100) String mineType,
-										   @RequestParam(value = "parentIds", required = false) @Valid @Size(
+	public ResponseEntity<File> uploadFile(@RequestPart(value = "file", required = false) MultipartFile file,
+										   @RequestPart("name") @Valid @Size(max = 100) String name,
+										   @RequestPart(value = "mimeType", required = false) @Valid @Size(max = 100) String mineType,
+										   @RequestPart(value = "parentIds", required = false) @Valid @Size(
 												   max = 100) List<String> parentIds) throws IOException {
 		return ResponseEntity.ok(fileService.uploadFile(file, name, mineType, parentIds));
 	}
 
 	@PutMapping("")
 	@PreAuthorize("hasAuthority('Admin')")
-	public ResponseEntity<File> updateFile(@RequestParam("fileId") String fileId,
-										   @RequestParam(value = "file", required = false) MultipartFile file,
-										   @RequestParam("name") @Valid @Size(max = 100) String name,
-										   @RequestParam(value = "mimeType", required = false) @Valid @Size(max = 100) String mineType,
-										   @RequestParam(value = "parentIds", required = false) @Valid @Size(
+	public ResponseEntity<File> updateFile(@RequestPart("fileId") String fileId,
+										   @RequestPart(value = "file", required = false) MultipartFile file,
+										   @RequestPart("name") @Valid @Size(max = 100) String name,
+										   @RequestPart(value = "mimeType", required = false) @Valid @Size(max = 100) String mineType,
+										   @RequestPart(value = "parentIds", required = false) @Valid @Size(
 												   max = 100) List<String> parentIds) throws IOException {
 		return ResponseEntity.ok(fileService.updateFile(fileId, file, name, mineType, parentIds));
 	}
@@ -70,10 +74,11 @@ public class FileController {
 
 	@GetMapping("/{fileId}/download")
 	@PreAuthorize("hasAnyAuthority('Admin', 'Viewer')")
-	public void downloadFile(@PathVariable String fileId, HttpServletResponse response) throws IOException {
+	public ResponseEntity<Resource> downloadFile(@PathVariable String fileId) throws IOException {
 		File file = fileService.getFile(fileId);
-		response.setContentType(file.getMimeType());
-		response.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
-		fileService.downloadFile(fileId).writeTo(response.getOutputStream());
+		HttpHeaders headers = new HttpHeaders();
+		headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=\"" + file.getName() + "\"");
+		return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.getMimeType())).headers(headers)
+							 .body(new InputStreamResource(fileService.downloadFile(fileId)));
 	}
 }

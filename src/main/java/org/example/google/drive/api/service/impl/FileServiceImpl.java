@@ -1,19 +1,18 @@
 package org.example.google.drive.api.service.impl;
 
-import com.google.api.client.http.FileContent;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.example.google.drive.api.service.FileService;
-import org.example.google.drive.api.util.FileConverterUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 @Service
@@ -49,14 +48,8 @@ public class FileServiceImpl implements FileService {
 			return drive.files().create(googleFile).setFields("id, name, parents, mimeType").execute();
 		}
 
-		java.io.File file = FileConverterUtil.toTempFile(multipartFile);
-		FileContent mediaContent = new FileContent(mimeType, file);
-
-		File uploadedFile = drive.files().create(googleFile, mediaContent).setFields("id, name, parents, mimeType").execute();
-		if (!file.delete()) {
-			log.error("Failed to temp delete file after uploaded {}", file.getName());
-		}
-		return uploadedFile;
+		InputStreamContent mediaContent = new InputStreamContent(mimeType, multipartFile.getInputStream());
+		return drive.files().create(googleFile, mediaContent).setFields("id, name, parents, mimeType").execute();
 	}
 
 	@Override
@@ -79,20 +72,13 @@ public class FileServiceImpl implements FileService {
 			googleFile.setMimeType("application/vnd.google-apps.folder");
 			return drive.files().update(fileId, googleFile).setFields("id, name, parents, mimeType").execute();
 		}
-		java.io.File file = FileConverterUtil.toTempFile(multipartFile);
-		FileContent mediaContent = new FileContent(mimeType, file);
-		File updatedFile = drive.files().update(fileId, googleFile, mediaContent).setFields("id, name, parents, mimeType").execute();
-		if (!file.delete()) {
-			log.error("Failed to delete temp file after update {}", file.getName());
-		}
-		return updatedFile;
+		InputStreamContent mediaContent = new InputStreamContent(mimeType, multipartFile.getInputStream());
+		return drive.files().update(fileId, googleFile, mediaContent).setFields("id, name, parents, mimeType").execute();
 	}
 
 	@Override
-	public ByteArrayOutputStream downloadFile(String fileId) throws IOException {
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-		drive.files().get(fileId).executeMediaAndDownloadTo(outputStream);
-		return outputStream;
+	public InputStream downloadFile(String fileId) throws IOException {
+		 return drive.files().get(fileId).executeMediaAsInputStream();
 	}
 
 	@Override
